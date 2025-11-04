@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>DHT11 Monitor & LED Control</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 40px;
+      background: #f7f9fc;
+    }
+    h2 {
+      color: #333;
+    }
+    #data {
+      font-size: 1.5em;
+      margin: 20px 0;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 80px;
+      height: 40px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0;
+      right: 0; bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 40px;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 30px;
+      width: 30px;
+      left: 5px;
+      bottom: 5px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: #4CAF50;
+    }
+    input:checked + .slider:before {
+      transform: translateX(40px);
+    }
+    .status {
+      margin-top: 10px;
+      font-size: 1.2em;
+      color: #333;
+    }
+  </style>
+</head>
+<body>
+  <h2>DHT11 Data Monitor</h2>
+  <div id="data">Loading...</div>
+
+  <h2>LED Control</h2>
+  <label class="switch">
+    <input type="checkbox" id="ledToggle">
+    <span class="slider"></span>
+  </label>
+  <div class="status" id="ledStatus">LED OFF</div>
+
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://trfscxlylkkbhnfuybbp.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4bHF1bG5qd3dkaWJodmd4eXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIyNDIyMzIsImV4cCI6MjA3NzgxODIzMn0.oAWIEPEfucH2txFxM8wQ_iPYcChchDYnJb8qx0KxW0c'
+    );
+
+    const toggle = document.getElementById('ledToggle');
+    const ledStatus = document.getElementById('ledStatus');
+
+    // Fetch latest DHT data
+    async function fetchDHT() {
+      const { data } = await supabase.from('meaninglessness').select('*').order('id', { ascending: false }).limit(1);
+      if (data && data.length > 0) {
+        const d = data[0];
+        document.getElementById('data').innerText = `🌡️ ${d.temperature}°C, 💧 ${d.humidity}%`;
+      }
+    }
+
+    // Fetch latest LED state
+    async function fetchLED() {
+      const { data } = await supabase.from('led').select('*').order('id', { ascending: false }).limit(1);
+      if (data && data.length > 0) {
+        const state = data[0].led_state;
+        toggle.checked = state;
+        ledStatus.innerText = state ? "LED ON" : "LED OFF";
+      }
+    }
+
+    // Update LED state in Supabase
+    async function updateLED(state) {
+      await supabase.from('led').insert([{ led_state: state }]);
+      ledStatus.innerText = state ? "LED ON" : "LED OFF";
+    }
+
+    // When user toggles slider
+    toggle.addEventListener('change', () => {
+      updateLED(toggle.checked);
+    });
+
+    // Refresh every 3 seconds
+    setInterval(() => {
+      fetchDHT();
+      fetchLED();
+    }, 3000);
+
+    // Initial load
+    fetchDHT();
+    fetchLED();
+  </script>
+</body>
+</html>
